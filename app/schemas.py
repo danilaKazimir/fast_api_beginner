@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import BaseModel, Field
 
 
 class CreateProduct(BaseModel):
@@ -21,3 +23,9 @@ class CreateUser(BaseModel):
     username: str
     email: str
     password: str
+
+
+class CreateReview(BaseModel):
+    product_slug: str
+    comment: str | None = None
+    grade: Annotated[int, Field(ge=1, le=5)]

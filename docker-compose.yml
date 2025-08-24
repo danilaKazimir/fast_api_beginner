@@ -1,27 +1,38 @@
 services:
   web:
-    # Берем Dockerfile из каталога app
     build:
       context: .
       dockerfile: ./app/Dockerfile
-    # Запускаем тестовый сервер
-    command: uvicorn app.main:app --host 0.0.0.0
-    # Открываем порт 8000 внутри и снаружи
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres_user:postgres_password@db:5432/postgres_database
+      - ALEMBIC_CONFIG=/home/fast/alembic.ini
+    command: >
+      sh -lc "
+        alembic -c /home/fast/alembic.ini upgrade head &&
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
     ports:
-      - 8000:8000
+      - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/home/fast/app
+      - ./alembic.ini:/home/fast/alembic.ini:ro
 
   db:
     image: postgres:15
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
     environment:
       - POSTGRES_USER=postgres_user
       - POSTGRES_PASSWORD=postgres_password
       - POSTGRES_DB=postgres_database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_user -d postgres_database"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   postgres_data:
